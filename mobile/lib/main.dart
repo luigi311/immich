@@ -40,6 +40,7 @@ import 'package:immich_mobile/utils/migration.dart';
 import 'package:isar/isar.dart';
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 void main() async {
   ImmichWidgetsBinding();
@@ -112,7 +113,28 @@ Future<void> initApp() async {
 }
 
 Future<Isar> loadDb() async {
-  final dir = await getApplicationDocumentsDirectory();
+  Directory dir;
+
+  try {
+    if (Platform.isLinux) {
+      // Define a custom directory for Linux
+      String homeDir = Platform.environment['HOME'] ?? '/tmp';
+      dir = Directory(p.join(homeDir, '.immich'));
+    } else {
+      // Use the standard application documents directory
+      dir = await getApplicationDocumentsDirectory();
+    }
+
+    // Ensure the directory exists
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+  } catch (e) {
+    // Handle any exceptions and fallback to the system temp directory
+    print('Error getting application documents directory: $e');
+    dir = Directory.systemTemp;
+  }
+
   Isar db = await Isar.open(
     [
       StoreValueSchema,
